@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta charset="utf-8">
+	<meta name="viewport"  content="width=device-width,user-scalable=no">
+	<meta name="copyright" content="Copyright (c) 大话主席">
+	<meta name="Keywords" content="javascript结合css3制作手机菜单左滑特效 - 大话主席">
+	<meta name="description" content="javascript结合css3制作手机菜单左滑特效 - 大话主席">
+	<title>javascript结合css3制作手机菜单左滑特效 - 大话主席 </title>
+</head>
+<script src="https://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+
+
+<style type="text/css">
+	/* css 重置 */
+	body, p, input, h1, h2, h3, h4, h5, h6, ul, li, dl, dt, dd, form { margin: 0; padding: 0; list-style: none; vertical-align: middle; font-weight:normal; }
+	img { border:0; margin: 0; padding: 0;   }
+	body { color: #000; -webkit-user-select: none; -webkit-text-size-adjust: none; font:normal 16px/200% "微软雅黑", helvetica, arial; text-align:left;   }
+	header, section, footer { display: block; margin: 0; padding: 0 }
+	a{text-decoration:none;color:#000;}
+	
+	body{ background:#f4f4f4;  }
+	/* 头部 */
+	header{  background:#F5AB38; padding-bottom:10px; border-bottom:3px solid #CF7F21;  }
+	header .logo{ padding:10px 0 5px 10px;  color:#fff; font-weight:bold; text-shadow:1px 1px 1px #965e18; font-size:22px; }
+
+	/* 尾部 */
+	footer{ text-align:center; padding:15px 0; line-height:18px; font-size:14px; background:#eee }
+
+	/* 内容 */
+	#content{ padding:10px 0; background:#fff;  }
+	.path{ padding:0 0 5px 5px;   }
+
+	/* 本例子css -------------------------------------- */
+	.tabBox .hd{ height:40px; line-height:40px; padding:0 10px; font-size:20px; background:#f4f4f4; border-bottom:1px solid #F5AB38; position:relative;  }
+	.tabBox .hd ul{ position:absolute; height:41px; top:0; overflow:hidden;  }
+	.tabBox .hd ul li{ float:left; padding:0 10px; color:#666;  }
+	.tabBox .hd ul .on{ border:2px solid #F5AB38; border-bottom-color:#fff; background:#fff; color:#CF7F21;   }
+	.tabBox .hd ul .on a{ display:block; /* 修复Android 4.0.x 默认浏览器当前样色无效果bug */  }
+	.tabBox .bd ul{ padding:10px 0 10px 10px; }
+	.tabBox .bd li{ height:33px; line-height:33px;   }
+	.tabBox .bd li a{ display:block; -webkit-tap-highlight-color:rgba(0,0,0,0); }  /* 去掉链接触摸高亮 */
+	
+	/* rightMenuBtn */
+	.rightMenuBtn{ width:32px; height:29px; border:1px solid #CF7F21; float:right; margin:12px 5px 0 0;  background:#dd8c28;
+		-webkit-border-radius:3px; -moz-border-radius:3px; border-radius:3px; 
+	}
+	.rightMenuBtn i,
+	.rightMenuBtn::before,
+	.rightMenuBtn::after{  content:""; height:4px; width:24px; margin:4px auto 0 auto; display:block;  background:#fff; overflow:hidden; 
+		-webkit-border-radius:3px; -moz-border-radius:3px; border-radius:3px; 
+	}
+
+	/* rightMenu */
+	.rightMenu{ background:#222; }
+	.rightMenu ul{ padding:3px }
+	.rightMenu li{ height:40px; line-height:40px; padding:0 10px; color:#ccc; background:#333; border-bottom:1px solid #555   }
+	.rightMenu li:nth-child(even){ background:#3d3d3d }	
+
+
+	/* 右滑动菜单必要css */
+	.rightMenu{  position:absolute; z-index:0; top:0; left:0; padding-left:15%; width:85%; min-height:100%;  }
+	.wrap{ position:relative; left:0; top:0; width:100%;  z-index:1; background:#fff; min-height:100%;
+		-webkit-transition:400ms;-o-transition:400ms;-moz-transition:400ms;transition:400ms;
+	}
+	.wrapMask{  position:absolute; left:0; top:0; width:100%; z-index:0; min-height:100%;  
+		-webkit-transition:400ms;-o-transition:400ms;-moz-transition:400ms;transition:400ms;
+	}
+	.showRightMenu .wrap,
+	.showRightMenu .wrapMask{
+		overflow-x:hidden;
+    	-webkit-transform: translate(-85%, 0);
+        -moz-transform: translate(-85%, 0);
+        -ms-transform: translate(-85%, 0);
+        -o-transform: translate(-85%, 0);
+        transform: translate(-85%, 0);
+	}
+	.showRightMenu .wrapMask{ display:block; z-index:2; }
+	.showRightMenu .rightMenuBtn{  background:#CF7F21 }]	
+</style>
+
+
+
+
+<script type="text/javascript"> 
+	//左滑动菜单
+	$(function(){
+
+		//常量
+		var body = $("body");
+		var rm = $(".rightMenu"); //菜单
+		var wrap =  $(".wrap"); //页面
+		var rmBtn = $(".rightMenuBtn");//菜单按钮
+		var wrapMask = $("<div class='wrapMask'></div>");//页面遮罩
+		var bodyAddClassName = "showRightMenu";
+		body.append( wrapMask );
+
+		//触摸变量
+		var isTouchPad = (/hp-tablet/gi).test(navigator.appVersion);
+		var hasTouch = 'ontouchstart' in window && !isTouchPad;
+		var touchStart = hasTouch ? 'touchstart' : 'mousedown';
+		var touchMove = hasTouch ? 'touchmove' : 'mousemove';
+		var touchEnd = hasTouch ? 'touchend' : 'mouseup';
+		var startX = 0;
+		var distX = 0;
+		var slideDist = 40; //滑动距离
+
+		//监听高度变化
+		var setHeight = function(){
+			if ( rm.outerHeight() < wrap.outerHeight() ){ rm.height(wrap.outerHeight());  }
+			else{ wrap.height(rm.outerHeight()) }
+			wrapMask.height(wrap.outerHeight());
+		}
+		setHeight();
+		$(window).resize(setHeight);
+
+		//点击事件
+		rmBtn.click(function(){ body.toggleClass(bodyAddClassName);});
+		wrapMask.click(function(){ body.removeClass(bodyAddClassName); });
+
+		//触摸事件
+		var start = function(e){
+			var point = hasTouch ? e.touches[0] : e;
+			distX = 0;
+			startX =  point.pageX; 
+			wrapMask[0].	addEventListener(touchMove, move,false);
+			wrapMask[0].addEventListener(touchEnd, end ,false);
+		}
+
+		var move = function(e){
+				var point = hasTouch ? e.touches[0] : e;
+				e.preventDefault();
+				distX = point.pageX-startX;
+		}
+
+		var end = function(e){
+			if (distX>slideDist){ body.removeClass(bodyAddClassName); }
+		}
+
+		//添加“触摸开始”事件监听
+		wrapMask[0].addEventListener(touchStart,start,false);
+
+	})
+
+
+</script>
+
+<body>
+	
+	<div class="wrap">
+			<header>
+				<a class="rightMenuBtn"><i></i></a>
+				<h1 class="logo">javascript结合css3制作手机菜单左滑特效</h1>
+			</header>
+
+			<div id="content">
+					
+					
+					<div id="leftTabBox" class="tabBox">
+						<div class="hd">
+							<ul>
+								<li><a>国内</a></li>
+								<li><a>国际</a></li>
+								<li><a>时事</a></li>
+							</ul>
+						</div>
+						<div class="bd">
+								<ul>
+									<li><a href="#">官方明确感染H7N9高危人群</a></li>
+									<li><a href="#">台官员:将驱离进入钓岛大陆船</a></li>
+									<li><a href="#">陈云长子吁学江泽民思想方法</a></li>
+									<li><a href="#">央视批抗日剧目:比着俗争着二</a></li>
+									<li><a href="#">网友:离3次结3次可避税国五条</a></li>
+									<li><a href="#">足疗女子自称东北人引发血案</a></li>
+									<li><a href="#">男性神秘“根浴”会所被调查</a></li>
+									<li><a href="#">女孩一年吃掉48公里长方便面</a></li>
+								</ul>
+								<ul>
+									<li><a href="#">日:沈阳军区部队开赴中朝边境</a></li>
+									<li><a href="#">印度核潜艇经我周边未被发现</a></li>
+									<li><a href="#">中国航母战斗群重防空轻反潜</a></li>
+									<li><a href="#">日本军车爆车胎造成一死一伤</a></li>
+									<li><a href="#">韩媒称朝鲜导弹反复出仓回仓</a></li>
+									<li><a href="#">美国空军因缺钱大量战机停飞</a></li>
+									<li><a href="#">外媒:中国神盾舰多处落后日本</a></li>
+									<li><a href="#">朝鲜东部海岸遍布导弹发射场</a></li>
+								</ul>
+								<ul>
+									<li><a href="#">农业占GDP低政府支持力度大</a></li>
+									<li><a href="#">林志玲:至今珍藏本山送的手绢</a></li>
+									<li><a href="#">五粮液高管年薪超茅台近一倍</a></li>
+									<li><a href="#">视频:朝鲜导弹反复出舱</a></li>
+									<li><a href="#">《我是歌手》明晚决赛开战</a></li>
+									<li><a href="#">皖新传媒一年花13亿委托理财</a></li>
+									<li><a href="#">男子驾车在高速路遭飞石袭击</a></li>
+									<li><a href="#">东北低温寒冷程度历史罕见</a></li>
+								</ul>
+						</div>
+					</div>
+				
+
+			</div>
+
+			<footer>
+				Copyright ©大话主席 <a target="_blank" href="http://www.superslide2.com/">SuperSlide2.com</a>
+			</footer>
+	</div>
+
+	<!-- 右菜单 -->
+	<section class="rightMenu">
+		<ul>
+			<li>网站首页</li>
+			<li>走进县市</li>
+			<li>新闻中心</li>
+			<li>政务公开</li>
+			<li>网上办事</li>
+			<li>政民互动</li>
+			<li>公共服务</li>
+			<li>招商引资</li>
+			<li>文化旅游</li>
+		</ul>
+	</section>
+
+
+</body>
+</html>
+
+
